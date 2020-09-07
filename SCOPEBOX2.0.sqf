@@ -15,7 +15,7 @@ private _addScopes = {
    _allWeaponEligibleOptics sort true;
    {
        _x params ["_classname"];
-       _text = format ["<t color='#33cc33'>%1</t>",getText (configfile >> "CfgWeapons" >> _className >> "displayName")];
+       private _text = format ["<t color='#33cc33'>%1</t>",getText (configfile >> "CfgWeapons" >> _className >> "displayName")];
        _this addAction [
            _text,
            compile format ['player addPrimaryWeaponItem "%1"', _classname],
