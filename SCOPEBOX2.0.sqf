@@ -9,13 +9,27 @@ private _addScopes = {
       private _cfgScope = getNumber (configfile >> "CfgWeapons" >> _optic >> "scope");
       private _opticExtremes = [_opticVisionModes,["opticsZoomMin"]] call BIS_fnc_configExtremes;
       private _opticMaxZoom = (_opticExtremes select 0) select 0;
-
       _opticMaxZoom >=0.25 && _cfgScope == 2 && _opticUseModelOpticsFindNonZero == -1;
    };
-   _allWeaponEligibleOptics sort true;
+
+
+   _allWeaponEligibleOptics = [_allWeaponEligibleOptics, [], {
+      getText (configfile >> "CfgWeapons" >> _x >> "displayName");
+      }] call BIS_fnc_sortBy;
+
+   private _colourSet = 0;
    {
-       _x params ["_classname"];
-       private _text = format ["<t color='#33cc33'>%1</t>",getText (configfile >> "CfgWeapons" >> _className >> "displayName")];
+      _x params ["_classname"];
+      private _prevClassname = getText (configfile >> "CfgWeapons" >> _allWeaponEligibleOptics select (_forEachIndex - 1) >> "displayName");
+      private _name = getText (configfile >> "CfgWeapons" >> _className >> "displayName");
+      private _colour = "<t color='#33cc33'>%1</t>";
+      if (_name select [0,3] != _prevClassname select [0,3]) then {
+         _colourSet = _colourSet + 1
+      };
+      if (_colourSet/2 == round(_colourSet/2)) then {
+         _colour = "<t color='#FF0000'>%1</t>"
+      };
+       private _text = format [_colour,_name];
        _this addAction [
            _text,
            compile format ['player addPrimaryWeaponItem "%1"', _classname],
