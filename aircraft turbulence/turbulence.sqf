@@ -29,7 +29,8 @@ private _FNC_master = {
 	private _FNC_turbulence = {
 		params ["_vehicle","_dimensions","_surfaceArea"];
 		if (_vehicle getVariable "TURBULENCE_STAGE" >= 1) then {
-			// assuming max wind value in ArmA is approximately an 8 on the Beaufort scale, the 20 = 20m/s airspeed.
+			_vehicle setVariable ["TURBULENCE_STAGE",0];
+			// 10 = 10m/s+2 airspeed at max wind and overcast
 			private _maxWindSpeed = (((windStr+overcast)/2) * 10)+2;
 			private _gustSpeed = [2,_maxWindSpeed,random(1)] call BIS_fnc_easeIn;
 			private _gustLength = [0.3,1,random(1)] call BIS_fnc_easeIn;
