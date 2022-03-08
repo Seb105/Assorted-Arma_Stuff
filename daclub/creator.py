@@ -6,7 +6,7 @@ import librosa
 import librosa.display
 import pydub
 
-CHUNK_LENGTH_MS = 10000
+CHUNK_LENGTH_MS = 30000
 OUTPUT_RATE = 30
 SAMPLE_RATE = 48000
 N_FFT = 2048
@@ -17,17 +17,17 @@ AUDIO_PATH = "song.ogg"
 
 def main():
     process_song(AUDIO_PATH)
-    # all = process_spectrum(AUDIO_PATH)
-    # fig, ax = plt.subplots()
-    # x = np.arange(0, len(all[0])) * (1 / OUTPUT_RATE)
-    # for i, output in enumerate(all):
-    #     line = ax.plot(x, output)[0]
-    #     line.set_label(("Bass", "Mid", "Treble")[i])
-    # ax.set_ylabel("Amplitude")
-    # ax.set_xlabel("Time (s)")
-    # ax.legend(loc='lower left')
-    # fig.show()
-    # input()
+    all = process_spectrum(AUDIO_PATH)
+    fig, ax = plt.subplots()
+    x = np.arange(0, len(all[0])) * (1 / OUTPUT_RATE)
+    for i, output in enumerate(all):
+        line = ax.plot(x, output)[0]
+        line.set_label(("Bass", "Mid", "Treble")[i])
+    ax.set_ylabel("Amplitude")
+    ax.set_xlabel("Time (s)")
+    ax.legend(loc='lower left')
+    fig.show()
+    input()
 
 
 def output_sqf_array(array):
@@ -60,7 +60,7 @@ def process_song(main_path):
     for i, chunk in enumerate(chunks):
         path = f"song/seb_song_{i}.ogg"
         print(f"Processing {path}")
-        #chunk.export(path, format="ogg")
+        chunk.export(path, format="ogg")
         volume_array.append(process_spectrum(path))
         paths.append(path)
     write_description(paths)
