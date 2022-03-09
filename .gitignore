@@ -4,3 +4,4 @@ daclub/song.mp3
 daclub/script.sqf
 daclub/description.ext
 daclub/song/volume_array.sqf
+*.mp3

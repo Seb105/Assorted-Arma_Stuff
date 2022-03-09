@@ -6,18 +6,18 @@ import librosa
 import librosa.display
 import pydub
 
-CHUNK_LENGTH_MS = 30000
+CHUNK_LENGTH_MS = 5000
+OVERLAP_MS = 300
 OUTPUT_RATE = 30
-SAMPLE_RATE = 48000
-N_FFT = 2048
+SAMPLE_RATE = 22050
+N_FFT = 1024
 HOP_LENGTH = 512
 NO_VOLUME = -80
 AUDIO_PATH = "song.ogg"
 
 
 def main():
-    process_song(AUDIO_PATH)
-    all = process_spectrum(AUDIO_PATH)
+    all = process_song(AUDIO_PATH)
     fig, ax = plt.subplots()
     x = np.arange(0, len(all[0])) * (1 / OUTPUT_RATE)
     for i, output in enumerate(all):
@@ -27,7 +27,6 @@ def main():
     ax.set_xlabel("Time (s)")
     ax.legend(loc='lower left')
     fig.show()
-    input()
 
 
 def output_sqf_array(array):
@@ -54,7 +53,10 @@ def output_sqf_array(array):
 def process_song(main_path):
     print("Processing audio")
     audio = pydub.AudioSegment.from_ogg(main_path)
-    chunks = pydub.utils.make_chunks(audio, CHUNK_LENGTH_MS)
+    chunks = []
+    for i in range(0, len(audio), CHUNK_LENGTH_MS):
+        slice_end = min(i + CHUNK_LENGTH_MS, len(audio)-1)
+        chunks.append(audio[i:slice_end])
     volume_array = []
     paths = []
     for i, chunk in enumerate(chunks):
@@ -70,6 +72,14 @@ def process_song(main_path):
             script_base[i] = line.replace('["REPLACE ME"]', output_sqf_array(volume_array))
         with open("script.sqf", "w") as f:
             f.writelines(script_base)
+    all_bass = []
+    all_mid = []
+    all_treble = []
+    for chunk in volume_array:
+        all_bass.extend(chunk[0])
+        all_mid.extend(chunk[1])
+        all_treble.extend(chunk[2])
+    return [all_bass, all_mid, all_treble]
 
 def write_description(paths):
     with open("description.ext", "w") as f:
@@ -79,7 +89,7 @@ def write_description(paths):
             classname = file.split(".")[0].split("/")[-1]
             f.write(f"    class {classname} {{\n")
             f.write(f"        name = \"{classname}\";\n")
-            f.write(f"        sound[] = {{\"\\song\\{classname}.ogg\", 1, 1, 500}};\n")
+            f.write(f"        sound[] = {{\"\\song\\{classname}.ogg\", db+25, 1, 500}};\n")
             f.write(f"        titles[] = {{0, \"\"}};\n")
             f.write(f"    }};\n")
         f.write("};")
@@ -88,11 +98,11 @@ def write_description(paths):
 def process_spectrum(path):
     S_db, sr = get_spectrum(path)
     frequencies = []
-    for lower, upper in (0, 300), (300, 3000), (3000, 8200):
+    for lower, upper in (60, 250), (1000, 3000), (5000, 8200):
         extracted_range = extract_frequency_range(S_db, sr, lower, upper)
         # show_graph(extracted_range, sr)
-        resampled_range = sum_and_resample_range(
-            extracted_range, sr, OUTPUT_RATE)
+        resampled_range = avg_and_resample_range(
+            extracted_range, OUTPUT_RATE)
         standardised_range = standardise_frequency_range(resampled_range)
         frequencies.append(list(standardised_range))
     return frequencies
@@ -141,16 +151,18 @@ def extract_frequency_range(S, sr, lower, upper):
     return S
 
 
-def sum_and_resample_range(S, from_freq, to_freq):
+def avg_and_resample_range(S, to_freq):
     summed = np.sum(S, axis=0)  # sum over columns
     all = np.empty(0)
-    last = np.size(summed)-1
-    prev = 0
+    last = float(np.size(summed)-1)
+    prev = 0.0
     time_per_hop = HOP_LENGTH / SAMPLE_RATE
     step = (1 / to_freq) / time_per_hop
     while prev < last:
-        next = min(int(prev + step), last)
-        all = np.append(all, np.sum(summed[prev:next]))
+        next = min(prev + step, last)
+        slice_start = int(prev)
+        slice_end = int(next)
+        all = np.append(all, np.average(summed[slice_start:slice_end]))
         prev = next
     # remove last element as for some reason it ruins everything
     return all[:-1]
@@ -162,8 +174,11 @@ def standardise_frequency_range(S):
     max = np.amax(S)
     range = max - min
     reduced = S - min
-    output = reduced / range
-    return 1 - output
+    # normalize to 0..1
+    standardised = 1 - (reduced / range)
+    # Quadratic curve
+    quadritised = np.power(standardised, 2)
+    return quadritised 
 
 
 if __name__ == '__main__':
