@@ -175,10 +175,14 @@ def standardise_frequency_range(S):
     range = max - min
     reduced = S - min
     # normalize to 0..1
-    standardised = 1 - (reduced / range)
-    # Quadratic curve
-    quadritised = np.power(standardised, 2)
-    return quadritised 
+    if range != 0:
+        standardised = 1 - (reduced / range)
+        # Quadratic curve
+        quadritised = np.power(standardised, 3)
+        return quadritised 
+    else:
+        S.fill(0.5)
+        return S
 
 
 if __name__ == '__main__':

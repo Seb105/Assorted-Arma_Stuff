@@ -14,7 +14,7 @@ seb_fnc_playSlice = {
         _speakers say3D [_soundClass, 2000];
     };
     private _lightintensity = _lightintensities#_slice;
-    for "_i" from 0 to (count _lightintensity) do {
+    for "_i" from 0 to NUM_SAMPLES do {
         [{
             params ["_lightintensities", "_lights", "_index"];
             _lightintensities params ["_bassArr", "_midArr", "_trebleArr"];
