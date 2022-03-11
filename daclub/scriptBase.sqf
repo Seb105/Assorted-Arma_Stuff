@@ -1,6 +1,6 @@
 params ["_speakers", "_lights"];
 #define BASE_INTENSITY 5000
-#define LIGHTS_HZ 30
+#define LIGHTS_HZ 15
 #define NUM_SAMPLES (SEGMENT_LENGTH*LIGHTS_HZ)-1
 #define SEGMENT_LENGTH 5
 // seconds
@@ -14,7 +14,8 @@ seb_fnc_playSlice = {
         _speakers say3D [_soundClass, 2000];
     };
     private _lightintensity = _lightintensities#_slice;
-    for "_i" from 0 to NUM_SAMPLES do {
+    private _length = count (_lightintensities#0);
+    for "_i" from 0 to _length do {
         [{
             params ["_lightintensities", "_lights", "_index"];
             _lightintensities params ["_bassArr", "_midArr", "_trebleArr"];

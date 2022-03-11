@@ -8,7 +8,7 @@ import pydub
 
 CHUNK_LENGTH_MS = 5000
 OVERLAP_MS = 300
-OUTPUT_RATE = 30
+OUTPUT_RATE = 15
 SAMPLE_RATE = 22050
 N_FFT = 1024
 HOP_LENGTH = 512
@@ -27,6 +27,7 @@ def main():
     ax.set_xlabel("Time (s)")
     ax.legend(loc='lower left')
     fig.show()
+    input()
 
 
 def output_sqf_array(array):
@@ -98,7 +99,7 @@ def write_description(paths):
 def process_spectrum(path):
     S_db, sr = get_spectrum(path)
     frequencies = []
-    for lower, upper in (60, 250), (1000, 3000), (5000, 8200):
+    for lower, upper in (60, 250), (4000, 6000), (7000, 9000):
         extracted_range = extract_frequency_range(S_db, sr, lower, upper)
         # show_graph(extracted_range, sr)
         resampled_range = avg_and_resample_range(
@@ -152,7 +153,7 @@ def extract_frequency_range(S, sr, lower, upper):
 
 
 def avg_and_resample_range(S, to_freq):
-    summed = np.sum(S, axis=0)  # sum over columns
+    summed = np.amax(S, axis=0)  # sum over columns
     all = np.empty(0)
     last = float(np.size(summed)-1)
     prev = 0.0
@@ -169,17 +170,16 @@ def avg_and_resample_range(S, to_freq):
 
 
 def standardise_frequency_range(S):
-    S = np.abs(S)
     min = np.amin(S)
     max = np.amax(S)
     range = max - min
     reduced = S - min
     # normalize to 0..1
     if range != 0:
-        standardised = 1 - (reduced / range)
+        standardised = reduced / range
         # Quadratic curve
-        quadritised = np.power(standardised, 3)
-        return quadritised 
+        # quadritised = np.power(standardised, 2)
+        return standardised 
     else:
         S.fill(0.5)
         return S
