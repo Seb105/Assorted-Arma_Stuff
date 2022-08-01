@@ -1,4 +1,3 @@
-from re import S
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -17,10 +16,10 @@ AUDIO_PATH = "song.ogg"
 
 
 def main():
-    all = process_song(AUDIO_PATH)
+    all_segments = process_song(AUDIO_PATH)
     fig, ax = plt.subplots()
-    x = np.arange(0, len(all[0])) * (1 / OUTPUT_RATE)
-    for i, output in enumerate(all):
+    x = np.arange(0, len(all_segments[0])) * (1 / OUTPUT_RATE)
+    for i, output in enumerate(all_segments):
         line = ax.plot(x, output)[0]
         line.set_label(("Bass", "Mid", "Treble")[i])
     ax.set_ylabel("Amplitude")
@@ -54,24 +53,16 @@ def output_sqf_array(array):
 def process_song(main_path):
     print("Processing audio")
     audio = pydub.AudioSegment.from_ogg(main_path)
-    chunks = []
-    for i in range(0, len(audio), CHUNK_LENGTH_MS):
-        slice_end = min(i + CHUNK_LENGTH_MS, len(audio)-1)
-        chunks.append(audio[i:slice_end])
+    chunks = get_chunks(audio)
     volume_array = []
     paths = []
-    for i, chunk in enumerate(chunks):
-        path = f"song/seb_song_{i}.ogg"
-        print(f"Processing {path}")
-        chunk.export(path, format="ogg")
-        volume_array.append(process_spectrum(path))
-        paths.append(path)
+    process_chunks(chunks, volume_array, paths)
     write_description(paths)
-    with open("scriptBase.sqf", "r") as r:
+    with open("scriptBase.sqf", "r", encoding="UTF-8") as r:
         script_base = r.readlines()
         for i, line in enumerate(script_base):
             script_base[i] = line.replace('["REPLACE ME"]', output_sqf_array(volume_array))
-        with open("script.sqf", "w") as f:
+        with open("script.sqf", "w", encoding="UTF-8") as f:
             f.writelines(script_base)
     all_bass = []
     all_mid = []
@@ -82,8 +73,23 @@ def process_song(main_path):
         all_treble.extend(chunk[2])
     return [all_bass, all_mid, all_treble]
 
+def get_chunks(audio):
+    chunks = []
+    for i in range(0, len(audio), CHUNK_LENGTH_MS):
+        slice_end = min(i + CHUNK_LENGTH_MS, len(audio)-1)
+        chunks.append(audio[i:slice_end])
+    return chunks
+
+def process_chunks(chunks, volume_array, paths):
+    for i, chunk in enumerate(chunks):
+        path = f"song/seb_song_{i}.ogg"
+        print(f"Processing {path}")
+        chunk.export(path, format="ogg")
+        volume_array.append(process_spectrum(path))
+        paths.append(path)
+
 def write_description(paths):
-    with open("description.ext", "w") as f:
+    with open("description.ext", "w", encoding="UTF-8") as f:
         f.write("class CfgSounds {\n")
         f.write("    sounds[] = {};\n")
         for file in paths:
@@ -91,8 +97,8 @@ def write_description(paths):
             f.write(f"    class {classname} {{\n")
             f.write(f"        name = \"{classname}\";\n")
             f.write(f"        sound[] = {{\"\\song\\{classname}.ogg\", db+25, 1, 500}};\n")
-            f.write(f"        titles[] = {{0, \"\"}};\n")
-            f.write(f"    }};\n")
+            f.write("        titles[] = {0, \"\"};\n")
+            f.write("    };\n")
         f.write("};")
 
 
@@ -154,35 +160,34 @@ def extract_frequency_range(S, sr, lower, upper):
 
 def avg_and_resample_range(S, to_freq):
     summed = np.amax(S, axis=0)  # sum over columns
-    all = np.empty(0)
+    all_slices = np.empty(0)
     last = float(np.size(summed)-1)
     prev = 0.0
     time_per_hop = HOP_LENGTH / SAMPLE_RATE
     step = (1 / to_freq) / time_per_hop
     while prev < last:
-        next = min(prev + step, last)
+        next_slice = min(prev + step, last)
         slice_start = int(prev)
-        slice_end = int(next)
-        all = np.append(all, np.average(summed[slice_start:slice_end]))
-        prev = next
+        slice_end = int(next_slice)
+        all_slices = np.append(all_slices, np.average(summed[slice_start:slice_end]))
+        prev = next_slice
     # remove last element as for some reason it ruins everything
-    return all[:-1]
+    return all_slices[:-1]
 
 
 def standardise_frequency_range(S):
-    min = np.amin(S)
-    max = np.amax(S)
-    range = max - min
-    reduced = S - min
+    min_freq = np.percentile(S, 15)
+    max_freq = np.amax(S)
+    range_freq = max_freq - min_freq
+    reduced = np.maximum(S - min_freq, 0)
     # normalize to 0..1
-    if range != 0:
-        standardised = reduced / range
+    if range_freq != 0:
+        standardised = reduced / range_freq
         # Quadratic curve
         # quadritised = np.power(standardised, 2)
         return standardised 
-    else:
-        S.fill(0.5)
-        return S
+    S.fill(0.5)
+    return S
 
 
 if __name__ == '__main__':
